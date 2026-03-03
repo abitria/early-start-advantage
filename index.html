@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>A(일찍) vs B(늦게) — 은퇴 시점 따라잡기 계산기</title>
+  <style>
+    :root{
+      --inputH: 46px;
+      --inputW: 220px;
+
+      --bg0:#0b1220;
+      --bg1:#0d1727;
+      --bg2:#0b1c2c;
+
+      --card: rgba(255,255,255,.07);
+      --card2: rgba(255,255,255,.09);
+      --line: rgba(255,255,255,.14);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --muted2: rgba(255,255,255,.55);
+
+      --a:#7c3aed;
+      --b:#22c55e;
+      --warn:#f59e0b;
+      --danger:#ef4444;
+
+      --shadow: 0 14px 50px rgba(0,0,0,.30);
+      color-scheme: dark;
+    }
+
+    *{ box-sizing:border-box; }
+    html, body { height: 100%; min-height: 100%; }
+
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+
+      background:
+        radial-gradient(900px 700px at 15% 10%, rgba(124,58,237,.16), transparent 60%),
+        radial-gradient(900px 700px at 85% 20%, rgba(34,197,94,.12), transparent 60%),
+        radial-gradient(900px 700px at 50% 110%, rgba(245,158,11,.07), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1) 55%, var(--bg2));
+      background-attachment: fixed;
+
+      padding: 26px;
+      line-height:1.5;
+    }
+
+    .wrap{ max-width: 1060px; margin: 0 auto; }
+
+    h1{ font-size: 20px; margin:0 0 8px; letter-spacing:-.2px; }
+    .sub{ font-size:13px; color:var(--muted); margin-bottom: 14px; }
+
+    .chips{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom: 14px; }
+    .chip{
+      font-size:12px; color:var(--muted);
+      border:1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      padding:6px 10px; border-radius:999px;
+      backdrop-filter: blur(10px);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    @media (min-width: 980px){
+      .grid{ grid-template-columns: 420px 1fr; }
+    }
+
+    .card{
+      background: linear-gradient(180deg, var(--card), rgba(255,255,255,.04));
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .cardTitle{
+      display:flex; align-items:center; justify-content:space-between;
+      margin-bottom: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .pill{
+      font-size:12px;
+      padding: 4px 10px;
+      border-radius:999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+    }
+
+    .row{
+      display:grid;
+      grid-template-columns: 160px var(--inputW);
+      gap: 10px;
+      align-items:center;
+      margin: 10px 0;
+    }
+    @media (max-width: 520px){
+      .row{ grid-template-columns: 1fr; }
+    }
+
+    label{ font-size: 13px; color: var(--muted); }
+
+    input{
+      height: var(--inputH);
+      width: var(--inputW);
+      max-width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.18);
+      background: rgba(7, 12, 20, .42);
+      color: var(--text);
+      outline: none;
+      font-size: 14px;
+    }
+    input:focus{
+      border-color: rgba(124,58,237,.55);
+      box-shadow: 0 0 0 4px rgba(124,58,237,.16);
+    }
+
+    .actions{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin-top: 12px;
+    }
+    button{
+      cursor:pointer;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 12px;
+      padding: 11px 12px;
+      font-size: 14px;
+      color: var(--text);
+      background: rgba(255,255,255,.06);
+      transition: transform .05s ease, background .2s ease, border-color .2s ease;
+    }
+    button:hover{ background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.28); }
+    button:active{ transform: translateY(1px); }
+    .primary{
+      border-color: rgba(124,58,237,.50);
+      background: linear-gradient(135deg, rgba(124,58,237,.30), rgba(124,58,237,.10));
+    }
+
+    .error{
+      margin-top: 10px;
+      color: #ffd1d1;
+      background: rgba(239,68,68,.12);
+      border: 1px solid rgba(239,68,68,.30);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      white-space: pre-line;
+      display:none;
+    }
+    .note{ margin-top: 10px; font-size: 12px; color: var(--muted2); }
+
+    .split{ display:grid; grid-template-columns: 1fr; gap: 10px; margin-top: 8px; }
+    @media (min-width: 980px){ .split{ grid-template-columns: 1fr 1fr; } }
+
+    .miniCard{
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 14px;
+      background: linear-gradient(180deg, var(--card2), rgba(255,255,255,.03));
+      min-height: 120px;
+    }
+    .miniTop{ display:flex; align-items:center; justify-content:space-between; margin-bottom: 10px; }
+    .tag{
+      font-size: 12px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.06);
+      color: var(--muted);
+      display:flex; gap:8px; align-items:center;
+    }
+    .dot{ width:10px; height:10px; border-radius:999px; background: var(--a); box-shadow: 0 0 16px rgba(124,58,237,.38); }
+    .dot.b{ background: var(--b); box-shadow: 0 0 16px rgba(34,197,94,.34); }
+
+    .kpi{ font-size: 22px; font-weight: 760; letter-spacing:-.3px; margin: 2px 0 4px; }
+    .hint{ font-size: 13px; color: var(--muted); white-space: pre-line; }
+
+    .resultGrid{
+      display:grid; grid-template-columns: 1fr; gap: 12px; margin-top: 12px;
+    }
+    @media (min-width: 980px){ .resultGrid{ grid-template-columns: 1fr 1fr; } }
+
+    .bigCard{
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      padding: 16px;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.02));
+    }
+    .bigTitle{
+      display:flex; align-items:center; justify-content:space-between;
+      color: var(--muted); font-size: 13px; margin-bottom: 12px;
+    }
+    .metric{
+      display:flex; justify-content:space-between; gap: 10px;
+      padding: 10px 0; border-top: 1px solid rgba(255,255,255,.10);
+    }
+    .metric:first-of-type{ border-top:none; padding-top:0; }
+    .mLabel{ color: var(--muted); font-size: 13px; }
+    .mVal{ font-weight: 750; }
+    .good{ color: rgba(34,197,94,.95); }
+    .bad{ color: rgba(245,158,11,.95); }
+    .danger{ color: rgba(239,68,68,.95); }
+  </style>
+</head>
+
+<body>
+  <div class="wrap">
+    <h1>A(일찍 시작) vs B(늦게 시작) — 은퇴 시점 “따라잡기” 계산기</h1>
+    <div class="sub">같은 기대수익률(월 복리) 가정에서, B가 A의 은퇴 시점 자산을 따라잡으려면 월 얼마를 넣어야 하는지 비교합니다.</div>
+
+    <div class="chips">
+      <div class="chip">지표 ① 원금(총 납입액) 비교</div>
+      <div class="chip">지표 ② B의 노력 배수(월 투자액 배수)</div>
+      <div class="chip">지표 ③ B의 추가 부담(총 납입액 증가분)</div>
+    </div>
+
+    <div class="grid">
+      <!-- Inputs -->
+      <div class="card">
+        <div class="cardTitle">
+          <span>입력값</span>
+          <span class="pill">입력하면 바로 계산됨</span>
+        </div>
+
+        <div class="row">
+          <label for="retireAge">은퇴 나이</label>
+          <input id="retireAge" data-kind="int" type="text" inputmode="numeric" pattern="[0-9]*" value="55" />
+        </div>
+
+        <div class="row">
+          <label for="annualRate">연 기대수익률(%)</label>
+          <input id="annualRate" data-kind="decimal" type="text" inputmode="decimal" pattern="[0-9.]*" value="7" />
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,.12); margin:14px 0;" />
+
+        <div class="row">
+          <label for="aAge">A 시작 나이</label>
+          <input id="aAge" data-kind="int" type="text" inputmode="numeric" pattern="[0-9]*" value="20" />
+        </div>
+
+        <div class="row">
+          <label for="aMonthly">A 월 투자액(원)</label>
+          <input id="aMonthly" data-kind="money" type="text" inputmode="numeric" pattern="[0-9]*" value="500000" />
+        </div>
+
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,.12); margin:14px 0;" />
+
+        <div class="row">
+          <label for="bAge">B 시작 나이</label>
+          <input id="bAge" data-kind="int" type="text" inputmode="numeric" pattern="[0-9]*" value="" placeholder="예: 40" />
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="calcBtn" type="button">계산</button>
+          <button id="resetBtn" type="button">기본값</button>
+        </div>
+
+        <div id="error" class="error"></div>
+        <div class="note">* 원(금액) 입력칸은 입력 중에도 자동으로 콤마(,)가 붙습니다.</div>
+      </div>
+
+      <!-- Results -->
+      <div class="card">
+        <div class="cardTitle">
+          <span>핵심 요약</span>
+          <span class="pill">A 기준으로 B가 ‘따라잡기’</span>
+        </div>
+
+        <div class="split">
+          <div class="miniCard">
+            <div class="miniTop">
+              <div class="tag"><span class="dot"></span> A (일찍 시작)</div>
+              <div class="pill" id="aYears">-</div>
+            </div>
+            <div class="kpi" id="aFV">-</div>
+            <div class="hint">은퇴 시점 예상자산</div>
+          </div>
+
+          <div class="miniCard">
+            <div class="miniTop">
+              <div class="tag"><span class="dot b"></span> B (늦게 시작)</div>
+              <div class="pill" id="bYears">-</div>
+            </div>
+            <div class="kpi" id="bNeed">-</div>
+            <div class="hint">A를 따라잡기 위한 월 투자액</div>
+          </div>
+        </div>
+
+        <div class="resultGrid">
+          <div class="bigCard">
+            <div class="bigTitle">
+              <span>원금(총 납입액) 비교</span>
+              <span class="pill" id="principalBadge">-</span>
+            </div>
+
+            <div class="metric">
+              <div class="mLabel">A 총 납입액</div>
+              <div class="mVal" id="aPrincipal">-</div>
+            </div>
+            <div class="metric">
+              <div class="mLabel">B 총 납입액(따라잡기 기준)</div>
+              <div class="mVal" id="bPrincipal">-</div>
+            </div>
+            <div class="metric">
+              <div class="mLabel">A는 B에 비해 원금 “절약”</div>
+              <div class="mVal good" id="aSaved">-</div>
+            </div>
+          </div>
+
+          <div class="bigCard">
+            <div class="bigTitle">
+              <span>B의 노력 지표</span>
+              <span class="pill" id="effortBadge">-</span>
+            </div>
+
+            <div class="metric">
+              <div class="mLabel">월 투자액 배수 (B ÷ A)</div>
+              <div class="mVal bad" id="monthlyMultiple">-</div>
+            </div>
+            <div class="metric">
+              <div class="mLabel">추가 부담 (B 원금 − A 원금)</div>
+              <div class="mVal danger" id="extraPrincipal">-</div>
+            </div>
+            <div class="metric">
+              <div class="mLabel">시간 격차</div>
+              <div class="mVal" id="timeGap">-</div>
+            </div>
+
+            <div class="note" id="summaryNote"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+
+    // ===== 입력 중 콤마 포맷(커서 최대한 유지) =====
+    function addCommas(numStr){
+      // numStr: digits only
+      return numStr.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    }
+
+    function digitsOnly(str){ return String(str).replace(/[^\d]/g, ""); }
+
+    // 입력 중 커서 위치 보정:
+    // - 포맷 전후에서 "커서 왼쪽에 있던 숫자 개수"를 기준으로 새 커서 위치 계산
+    function formatMoneyInput(el){
+      const before = el.value;
+      const selStart = el.selectionStart ?? before.length;
+
+      // 커서 왼쪽에 있는 "숫자" 개수
+      const leftDigitsCount = digitsOnly(before.slice(0, selStart)).length;
+
+      const rawDigits = digitsOnly(before);
+      const formatted = rawDigits === "" ? "" : addCommas(rawDigits);
+
+      el.value = formatted;
+
+      // 새 문자열에서 leftDigitsCount 만큼의 숫자를 지나온 위치로 커서 이동
+      let pos = 0, seen = 0;
+      while (pos < formatted.length){
+        if (/\d/.test(formatted[pos])) seen++;
+        pos++;
+        if (seen >= leftDigitsCount) break;
+      }
+      el.setSelectionRange?.(pos, pos);
+    }
+
+    // 정수 입력은 숫자만 남김(콤마 없음)
+    function normalizeIntInput(el){
+      const before = el.value;
+      const selStart = el.selectionStart ?? before.length;
+      const leftDigitsCount = digitsOnly(before.slice(0, selStart)).length;
+
+      const rawDigits = digitsOnly(before);
+      el.value = rawDigits;
+
+      const pos = Math.min(rawDigits.length, leftDigitsCount);
+      el.setSelectionRange?.(pos, pos);
+    }
+
+    // 소수 입력(예: 7.5) - 숫자와 점 하나만 허용
+    function normalizeDecimalInput(el){
+      const before = el.value;
+      const selStart = el.selectionStart ?? before.length;
+
+      // 커서 왼쪽에서 허용되는 문자(숫자/점) 개수 계산용
+      const left = before.slice(0, selStart);
+
+      // 전체 정규화
+      let s = String(before).replace(/[^\d.]/g, "");
+      const firstDot = s.indexOf(".");
+      if (firstDot !== -1){
+        // 첫 점만 남기고 나머지 점 제거
+        s = s.slice(0, firstDot + 1) + s.slice(firstDot + 1).replace(/\./g, "");
+      }
+
+      // 커서 보정: 정규화 전 left를 같은 규칙으로 정규화해서 길이를 기준으로 이동
+      let leftNorm = String(left).replace(/[^\d.]/g, "");
+      const ld = leftNorm.indexOf(".");
+      if (ld !== -1){
+        leftNorm = leftNorm.slice(0, ld + 1) + leftNorm.slice(ld + 1).replace(/\./g, "");
+      }
+
+      el.value = s;
+      const pos = Math.min(s.length, leftNorm.length);
+      el.setSelectionRange?.(pos, pos);
+    }
+
+    // ✅ 포커스할 때마다 값 삭제(계속)
+    function clearOnEveryFocus(input){
+      input.addEventListener("focus", () => {
+        const sel = input.value?.substring(input.selectionStart ?? 0, input.selectionEnd ?? 0);
+        if (sel && sel.length > 0) return;
+
+        if (input.value.trim() !== ""){
+          input.value = "";
+          setTimeout(() => input.setSelectionRange?.(0,0), 0);
+          calc();
+        }
+      });
+    }
+
+    function fmtWon(x){
+      if (!isFinite(x)) return "-";
+      const r = Math.round(x);
+      return r.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",") + "원";
+    }
+    function fmtNum(x, d=2){
+      if (!isFinite(x)) return "-";
+      return x.toFixed(d);
+    }
+    function showError(msg){
+      const el = $("error");
+      if (!msg){
+        el.style.display = "none";
+        el.textContent = "";
+        return;
+      }
+      el.style.display = "block";
+      el.textContent = msg;
+    }
+
+    function parseNum(v){
+      const s = String(v ?? "").replace(/,/g,"").trim();
+      if (s === "") return NaN;
+      return Number(s);
+    }
+
+    function fvMonthlyAnnuity(P, i, n){
+      if (n <= 0) return 0;
+      if (i === 0) return P * n;
+      return P * ((Math.pow(1+i, n) - 1) / i);
+    }
+    function factor(i, n){
+      if (n <= 0) return 0;
+      if (i === 0) return n;
+      return (Math.pow(1+i, n) - 1) / i;
+    }
+    function classifyMultiple(m){
+      if (!isFinite(m)) return "월 -";
+      if (m < 1.2) return "부담 낮음";
+      if (m < 2.0) return "부담 보통";
+      if (m < 3.0) return "부담 큼";
+      return "매우 큼";
+    }
+
+    function validate(){
+      const retireAge = parseNum($("retireAge").value);
+      const annualRate = parseNum($("annualRate").value);
+      const aAge = parseNum($("aAge").value);
+      const aMonthly = parseNum($("aMonthly").value);
+      const bAge = parseNum($("bAge").value);
+
+      const errs = [];
+      if (!(retireAge > 0 && retireAge <= 120)) errs.push("은퇴 나이는 1~120 범위로 입력해 주세요.");
+      if (!(annualRate >= 0 && annualRate <= 100)) errs.push("연 기대수익률(%)은 0~100 범위로 입력해 주세요.");
+      if (!(aAge >= 0 && aAge < retireAge)) errs.push("A 시작 나이는 은퇴 나이보다 작아야 해요.");
+      if (!(aMonthly > 0)) errs.push("A 월 투자액은 0보다 커야 해요.");
+
+      if (!isFinite(bAge)) {
+        errs.push("B 시작 나이를 입력해 주세요. (예: 40)");
+      } else {
+        if (!(bAge >= 0 && bAge < retireAge)) errs.push("B 시작 나이는 은퇴 나이보다 작아야 해요.");
+        if (!(bAge > aAge)) errs.push("B 시작 나이는 A 시작 나이보다 커야 비교가 의미 있어요.");
+      }
+      return { errs, retireAge, annualRate, aAge, aMonthly, bAge };
+    }
+
+    function clearOutputs(){
+      ["aYears","bYears","aFV","bNeed","aPrincipal","bPrincipal","aSaved",
+       "monthlyMultiple","extraPrincipal","timeGap","principalBadge","effortBadge"
+      ].forEach(id => $(id).textContent = "-");
+      $("summaryNote").textContent = "";
+    }
+
+    function calc(){
+      const { errs, retireAge, annualRate, aAge, aMonthly, bAge } = validate();
+      if (errs.length){
+        showError(errs.join("\n"));
+        clearOutputs();
+        return;
+      }
+      showError("");
+
+      const i = (annualRate/100)/12;
+      const nA = (retireAge - aAge) * 12;
+      const nB = (retireAge - bAge) * 12;
+
+      const fvA = fvMonthlyAnnuity(aMonthly, i, nA);
+      const aPrincipal = aMonthly * nA;
+
+      const fB = factor(i, nB);
+      const bMonthlyNeeded = fvA / fB;
+      const bPrincipal = bMonthlyNeeded * nB;
+
+      const aSaved = Math.max(0, bPrincipal - aPrincipal);
+      const monthlyMultiple = bMonthlyNeeded / aMonthly;
+      const extraPrincipal = bPrincipal - aPrincipal;
+
+      const gapYears = bAge - aAge;
+      const gapMonths = gapYears * 12;
+
+      $("aYears").textContent = `${retireAge - aAge}년`;
+      $("bYears").textContent = `${retireAge - bAge}년`;
+      $("aFV").textContent = fmtWon(fvA);
+      $("bNeed").textContent = fmtWon(bMonthlyNeeded);
+
+      $("aPrincipal").textContent = fmtWon(aPrincipal);
+      $("bPrincipal").textContent = fmtWon(bPrincipal);
+      $("aSaved").textContent = fmtWon(aSaved);
+
+      $("monthlyMultiple").textContent = `${fmtNum(monthlyMultiple, 2)}배`;
+      $("extraPrincipal").textContent = fmtWon(extraPrincipal);
+      $("timeGap").textContent = `${gapYears}년 (${gapMonths}개월)`;
+
+      $("principalBadge").textContent = (extraPrincipal >= 0) ? "B가 원금 더 큼" : "B가 원금 더 작음";
+      $("effortBadge").textContent = `월 ${classifyMultiple(monthlyMultiple)}`;
+
+      $("summaryNote").textContent =
+        `B는 A보다 ${gapYears}년 늦게 시작해서, 같은 은퇴 시점 자산을 따라잡으려면 월 투자액이 약 ${fmtNum(monthlyMultiple, 2)}배 필요합니다.\n` +
+        `따라잡기 기준으로 B의 총 납입액은 A보다 ${fmtWon(Math.abs(extraPrincipal))} ${extraPrincipal >= 0 ? "더 들어갑니다." : "덜 들어갑니다."}`;
+    }
+
+    function resetDefaults(){
+      $("retireAge").value = "55";
+      $("annualRate").value = "7";
+      $("aAge").value = "20";
+      $("aMonthly").value = "500,000"; // 초기부터 콤마 표시
+      $("bAge").value = "";
+
+      showError("");
+      clearOutputs();
+      calc();
+    }
+
+    $("calcBtn").addEventListener("click", calc);
+    $("resetBtn").addEventListener("click", resetDefaults);
+
+    // ✅ 자동적용 + 입력 중 콤마/정규화
+    function bindAutoCalc(id){
+      const el = $(id);
+
+      const fire = () => calc();
+
+      el.addEventListener("input", () => {
+        const kind = el.dataset.kind;
+        if (kind === "money") formatMoneyInput(el);
+        else if (kind === "int") normalizeIntInput(el);
+        else if (kind === "decimal") normalizeDecimalInput(el);
+
+        fire();
+      });
+
+      // 브라우저/모바일 보완
+      el.addEventListener("change", fire);
+      el.addEventListener("keyup", fire);
+      el.addEventListener("paste", () => setTimeout(fire, 0));
+
+      clearOnEveryFocus(el);
+    }
+
+    ["retireAge","annualRate","aAge","aMonthly","bAge"].forEach(bindAutoCalc);
+
+    // 최초 1회
+    resetDefaults();
+  </script>
+</body>
+</html>
